@@ -12,7 +12,16 @@ pub struct PlayerController {
 }
 
 impl PlayerController {
-    
+
+    // Public constructor
+    pub fn new(model: Arc<Mutex<AudioModel>>) -> Self {
+        PlayerController {
+            model,
+            stream: None,
+            current_samples: Vec::new(),
+        }
+    }
+
     pub fn play_current(&mut self) {
         // Lock the model to get the current file
         let current_file = {
@@ -88,12 +97,12 @@ impl PlayerController {
         Ok(())
     }
 
-    pub fn stop(&mut self) {
-        if let Some(stream) = &self.stream {
-            stream.pause().unwrap();
-        }
-        println!("Playback paused.");
-    }
+    // pub fn stop(&mut self) {
+    //     if let Some(stream) = &self.stream {
+    //         stream.pause().unwrap();
+    //     }
+    //     println!("Playback paused.");
+    // }
 
     pub fn next(&mut self) {
         self.model.lock().unwrap().next_track();
