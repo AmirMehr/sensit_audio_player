@@ -11,10 +11,16 @@ impl AudioModel {
         let mut files = Vec::new();
 
         // Read the folder and filter audio files
+        // @TODO There should be an implementation for invalid addresses her
         let paths = fs::read_dir(folder_path).unwrap();
         for path in paths {
             let path = path.unwrap().path();
-            if path.extension().and_then(|s| s.to_str()).map(|s| s == "mp3" || s == "wav").unwrap_or(false) {
+            if path
+                .extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s == "mp3" || s == "wav")
+                .unwrap_or(false)
+            {
                 files.push(path);
             }
         }

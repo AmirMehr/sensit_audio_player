@@ -8,7 +8,8 @@ fn main() {
     // Read folder path from the user
     let folder = read_folder_input();
 
-    // Initialize the audio model with files from the folder
+    // Initialize the audio model with the files from the folder
+    // @TODO in a production mode, we should implement logic for re-asking a path if path is wrong or doesn't have audio files
     let model: Arc<Mutex<AudioModel>> = Arc::new(Mutex::new(AudioModel::new(&folder)));
 
     // Initialize the player controller

@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 cpal = "0.15"
+hound = "3.5.1"
+ringbuf = "0.4.7"
