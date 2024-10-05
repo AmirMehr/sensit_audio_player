@@ -1,8 +1,10 @@
+extern crate hound;
+extern crate cpal;
+
 use crate::modules::models::audio_model::AudioModel;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Stream, StreamConfig};
+use cpal::{ Stream, StreamConfig};
 use std::sync::{Arc, Mutex};
-use hound;
 
 pub struct PlayerController {
     model: Arc<Mutex<AudioModel>>,
@@ -25,23 +27,39 @@ impl PlayerController {
             model.get_current_file().to_path_buf()
         };
 
-        println!("Playing: {:?}", current_file.display());
+        println!("Playing file: {:?}", current_file.display());
+
+        // Log: Loading the file
+        println!("[LOG] Loading WAV file...");
 
         // Load the audio samples from the current WAV file
         if let Err(err) = self.load_wav_samples(&current_file) {
-            eprintln!("Error loading samples: {:?}", err);
+            eprintln!("[ERROR] Error loading samples: {:?}", err);
             return;
         }
+
+        // Log: WAV file successfully loaded
+        println!("[LOG] Successfully loaded the WAV file.");
 
         // Initialize CPAL for playback
         let host = cpal::default_host();
         let device = host
             .default_output_device()
-            .expect("Failed to find output device");
+            .expect("[ERROR] Failed to find output device");
+
+        // Log: Output device selected
+        println!("[LOG] Selected output device: {:?}", device.name().unwrap_or("Unknown device".to_lowercase()));
+
         let config: StreamConfig = device.default_output_config().unwrap().config();
+
+        // Log: Configuration details
+        println!("[LOG] CPAL configuration - Channels: {}, Sample rate: {}", config.channels, config.sample_rate.0);
 
         let samples = Arc::new(Mutex::new(self.current_samples.clone())); // Use cloned samples
         let samples_clone = Arc::clone(&samples);
+
+        // Add a separate counter for sample position within the closure
+        let mut sample_pos = 0;
 
         // Create the audio stream
         self.stream = Some(
@@ -50,21 +68,49 @@ impl PlayerController {
                     &config,
                     move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                         let samples = samples_clone.lock().unwrap();
-                        let len = data.len().min(samples.len());
-                        data[..len].copy_from_slice(&samples[..len]);
-                        for sample in &mut data[len..] {
-                            *sample = 0.0; // Fill remaining buffer with silence
+
+                        // Check if we have enough samples left
+                        if sample_pos >= samples.len() {
+                            // Log when playback ends
+                            println!("[LOG] Playback finished.");
+                            for sample in data.iter_mut() {
+                                *sample = 0.0; // Fill with silence
+                            }
+                            return;
                         }
+
+                        // Log: Playback processing
+                        // println!("[LOG] Processing audio stream buffer");
+
+                        // Copy the samples to the audio stream buffer
+                        let len = data.len().min(samples.len() - sample_pos);
+                        data[..len].copy_from_slice(&samples[sample_pos..sample_pos + len]);
+                        sample_pos += len;
+
+                        // Fill the rest with silence if needed
+                        for sample in &mut data[len..] {
+                            *sample = 0.0;
+                        }
+
+                        // Log the current playback position
+                        // println!("[LOG] Sample position: {}/{}", sample_pos, samples.len());
                     },
                     move |err| {
-                        eprintln!("Stream error: {:?}", err);
+                        eprintln!("[ERROR] Stream error: {:?}", err);
                     },
                     None, // No user data
                 )
                 .unwrap(),
         );
 
+        // Log: Audio stream created
+        println!("[LOG] CPAL audio stream created.");
+
+        // Start playing
         self.stream.as_ref().unwrap().play().unwrap();
+
+        // Log: Playback started
+        println!("[LOG] Playback started.");
     }
 
     // Load audio samples from a WAV file using the hound library
@@ -72,9 +118,8 @@ impl PlayerController {
         let mut reader = hound::WavReader::open(path)?;
         let spec = reader.spec();
 
-        if spec.bits_per_sample != 16 || spec.sample_rate != 44100 {
-            return Err("Only 16-bit PCM WAV files with 44.1kHz are supported".into());
-        }
+        // Log: WAV file header details
+        println!("[LOG] WAV file format: {:?}, Channels: {}, Sample rate: {}", spec.sample_format, spec.channels, spec.sample_rate);
 
         self.current_samples.clear(); // Clear previous samples
 
@@ -84,16 +129,21 @@ impl PlayerController {
             self.current_samples.push(sample as f32 / i16::MAX as f32); // Normalize to -1.0 to 1.0
         }
 
+        // Log: Number of samples loaded
+        println!("[LOG] Loaded {} audio samples.", self.current_samples.len());
+
         Ok(())
     }
 
     pub fn next(&mut self) {
         self.model.lock().unwrap().next_track();
-        self.play_current();
+        println!("[LOG] Playing next track...");
+        // self.play_current();
     }
 
     pub fn prev(&mut self) {
         self.model.lock().unwrap().prev_track();
-        self.play_current();
+        println!("[LOG] Playing previous track...");
+        // self.play_current();
     }
 }
