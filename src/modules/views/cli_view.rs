@@ -12,7 +12,7 @@ pub fn start_cli(player_controller: &mut PlayerController) {
         let input = input.trim();
 
         match input {
-            "p" => player_controller.play_current(),
+            "p" => player_controller.toggle_play(),
             "j" => player_controller.prev(),
             "k" => player_controller.next(),
             "q" => break,

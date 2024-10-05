@@ -14,7 +14,8 @@ fn main() {
 
     // Initialize the player controller
     let mut player_controller: PlayerController = PlayerController::new(Arc::clone(&model));
-
+    player_controller.load_current();
+    
     // Start the CLI interface
     start_cli(&mut player_controller);
 }

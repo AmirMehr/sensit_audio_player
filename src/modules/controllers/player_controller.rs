@@ -10,6 +10,7 @@ pub struct PlayerController {
     model: Arc<Mutex<AudioModel>>,
     stream: Option<Stream>,
     current_samples: Vec<f32>, // Buffer for the current audio samples
+    is_paused: bool,           // Track if the player is paused
 }
 
 impl PlayerController {
@@ -18,10 +19,11 @@ impl PlayerController {
             model,
             stream: None,
             current_samples: Vec::new(),
+            is_paused: false,
         }
     }
 
-    pub fn play_current(&mut self) {
+    pub fn load_current(&mut self) {
         let current_file = {
             let model = self.model.lock().unwrap();
             model.get_current_file().to_path_buf()
@@ -37,6 +39,9 @@ impl PlayerController {
             eprintln!("[ERROR] Error loading samples: {:?}", err);
             return;
         }
+
+        // Reset pause state
+        self.is_paused = true;
 
         // Log: WAV file successfully loaded
         println!("[LOG] Successfully loaded the WAV file.");
@@ -107,10 +112,27 @@ impl PlayerController {
         println!("[LOG] CPAL audio stream created.");
 
         // Start playing
-        self.stream.as_ref().unwrap().play().unwrap();
+        // self.stream.as_ref().unwrap().play().unwrap();
 
         // Log: Playback started
-        println!("[LOG] Playback started.");
+        // println!("[LOG] Playback started.");
+    }
+
+    // Pause the audio playback
+    pub fn toggle_play(&mut self) {
+        if let Some(stream) = &self.stream {
+            if !self.is_paused {
+                stream.pause().unwrap();
+                self.is_paused = true;
+                println!("[LOG] Playback paused.");
+            } else {
+                stream.play().unwrap();
+                self.is_paused = false;
+                println!("[LOG] Playback started.");
+            }
+        } else {
+            println!("[ERROR] No active stream to pause.");
+        }
     }
 
     // Load audio samples from a WAV file using the hound library
@@ -138,12 +160,12 @@ impl PlayerController {
     pub fn next(&mut self) {
         self.model.lock().unwrap().next_track();
         println!("[LOG] Playing next track...");
-        // self.play_current();
+        self.load_current();
     }
 
     pub fn prev(&mut self) {
         self.model.lock().unwrap().prev_track();
         println!("[LOG] Playing previous track...");
-        // self.play_current();
+        self.load_current();
     }
 }
