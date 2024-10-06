@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::PathBuf;
 
 pub struct AudioModel {
@@ -11,8 +10,7 @@ impl AudioModel {
         let mut files = Vec::new();
 
         // Read the folder and filter audio files
-        // @TODO There should be an implementation for invalid addresses her
-        let paths = fs::read_dir(folder_path).unwrap();
+        let paths = std::fs::read_dir(folder_path).unwrap();
         for path in paths {
             let path = path.unwrap().path();
             if path

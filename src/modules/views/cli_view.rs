@@ -1,10 +1,12 @@
+use crate::modules::{
+    controllers::player_controller::PlayerController, services::wav_loader::WavLoader
+};
 use std::io::{self, Write};
-use crate::modules::controllers::player_controller::PlayerController;
 
-pub fn start_cli(player_controller: &mut PlayerController) {
+pub fn start_cli(player_controller: &mut PlayerController<WavLoader>) {
     loop {
         // Get user input
-        print!("Enter command (p = play/pause, j = prev, k = next, q = quit): ");
+        print!("🤘 Enter command (▶️  p = play/pause, ⏮️  j = prev, ⏭️  k = next, 🛑 q = quit): ");
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
@@ -22,7 +24,7 @@ pub fn start_cli(player_controller: &mut PlayerController) {
 }
 
 pub fn read_folder_input() -> String {
-    print!("Enter the folder path containing audio files: ");
+    print!("🎵 Enter the folder path containing audio files:");
     io::stdout().flush().unwrap();
 
     let mut folder = String::new();
