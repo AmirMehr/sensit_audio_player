@@ -1,5 +1,3 @@
-To create a concise `README.md` using best practices for GitHub Markdown formatting, you can focus on simplicity and structure. Here’s a refined version based on GitHub’s basic writing and formatting guidelines:
-
 * * *
 
 CLI Audio Player
@@ -57,21 +55,3 @@ Copy code
 
 `src/ ├── main.rs              # Application entry point ├── cli_view.rs          # Handles CLI interactions ├── player_controller.rs # Controls audio playback └── audio_model.rs       # Manages audio file handling`
 
-License
--------
-
-This project is licensed under the MIT License.
-
-* * *
-
-This structure follows the GitHub Markdown guidelines for headers, code blocks, and lists to keep it concise and easy to navigate. You can customize this template by adding additional details or changing the repository URL before publishing.
-
-For more formatting tips, check out [GitHub's Markdown Guide](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)​(
-
-[GitHub Docs](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)
-
-)​(
-
-[GitHub Docs](https://docs.github.com/articles/markdown-basics)
-
-).
