@@ -1,3 +1,4 @@
+
 * * *
 
 CLI Audio Player
@@ -24,7 +25,7 @@ Build and Run
 
 ### Step 1: Clone the Repository
 ```
-git clone [<repository-url>](https://github.com/AmirMehr/sensit_audio_player.git)
+git clone https://github.com/AmirMehr/sensit_audio_player.git
 ```
 
 ```

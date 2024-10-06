@@ -6,7 +6,7 @@ use std::io::{self, Write};
 pub fn start_cli(player_controller: &mut PlayerController<WavLoader>) {
     loop {
         // Get user input
-        print!("🤘 Enter command (▶️  p = play/pause, ⏮️  j = prev, ⏭️  k = next, 🛑 q = quit): ");
+        print!("Enter command (▶️  p = play/pause, ⏮️  j = prev, ⏭️  k = next, 🛑 q = quit): ");
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
