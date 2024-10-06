@@ -30,7 +30,7 @@ impl AudioLoader for WavLoader {
 
             // Log header information
             println!(
-                "[LOG] WAV file format: Channels: {}, Sample rate: {}, Bits per sample: {}",
+                "[SENSIT_LOG] WAV file format: Channels: {}, Sample rate: {}, Bits per sample: {}",
                 num_channels, sample_rate, bits_per_sample
             );
 
@@ -47,7 +47,7 @@ impl AudioLoader for WavLoader {
             *samples_result_clone.lock().unwrap() = Some(current_samples);
 
             // Log the number of samples loaded
-            println!("[LOG] Loaded audio samples.");
+            println!("[SENSIT_LOG] Loaded audio samples.");
         })
         .join()
         .unwrap(); // Join the thread to ensure it's completed

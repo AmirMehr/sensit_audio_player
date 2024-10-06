@@ -31,7 +31,7 @@ impl<L: AudioLoader> PlayerController<L> {
         let current_file = self.get_current_file();
 
         // Step 2: Log the file name and start time
-        println!("[LOG] Loading file: {:?}", current_file.display());
+        println!("[SENSIT_LOG] Loading file: {:?}", current_file.display());
         let start_time = Instant::now(); // Start timing
 
         // Step 3: Load WAV samples from the file using the injected loader
@@ -40,7 +40,7 @@ impl<L: AudioLoader> PlayerController<L> {
                 self.current_samples = samples;
                 // Log the time taken to load the file
                 let duration = start_time.elapsed();
-                println!("[LOG] Finished loading file in {:?}", duration);
+                println!("[SENSIT_LOG] Finished loading file in {:?}", duration);
             }
             Err(err) => {
                 eprintln!("[ERROR] Error loading samples: {:?}", err);
@@ -79,12 +79,12 @@ impl<L: AudioLoader> PlayerController<L> {
         let config = device.default_output_config()?.config();
 
         println!(
-            "[LOG] Selected output device: {:?}",
+            "[SENSIT_LOG] Selected output device: {:?}",
             device.name().unwrap_or("Unknown device".to_string())
         );
 
         println!(
-            "[LOG] CPAL configuration - Channels: {}, Sample rate: {}",
+            "[SENSIT_LOG] CPAL configuration - Channels: {}, Sample rate: {}",
             config.channels, config.sample_rate.0
         );
 
@@ -129,11 +129,11 @@ impl<L: AudioLoader> PlayerController<L> {
             if !self.is_paused {
                 stream.pause().unwrap();
                 self.is_paused = true;
-                println!("[LOG] Playback paused.");
+                println!("[SENSIT_LOG] Playback paused.");
             } else {
                 stream.play().unwrap();
                 self.is_paused = false;
-                println!("[LOG] Playback resumed.");
+                println!("[SENSIT_LOG] Playback resumed.");
             }
         } else {
             println!("[ERROR] No active stream to toggle play/pause.");
@@ -142,13 +142,13 @@ impl<L: AudioLoader> PlayerController<L> {
 
     pub fn next(&mut self) {
         self.model.lock().unwrap().next_track();
-        println!("[LOG] Playing next track...");
+        println!("[SENSIT_LOG] Playing next track...");
         self.load_current();
     }
 
     pub fn prev(&mut self) {
         self.model.lock().unwrap().prev_track();
-        println!("[LOG] Playing previous track...");
+        println!("[SENSIT_LOG] Playing previous track...");
         self.load_current();
     }
 }
