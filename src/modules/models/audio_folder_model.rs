@@ -1,28 +1,12 @@
 use std::path::PathBuf;
 
-pub struct AudioModel {
+pub struct AudioFolderModel {
     pub files: Vec<PathBuf>,
     pub current_index: usize,
 }
 
-impl AudioModel {
-    pub fn new(folder_path: &str) -> Self {
-        let mut files = Vec::new();
-
-        // Read the folder and filter audio files
-        let paths = std::fs::read_dir(folder_path).unwrap();
-        for path in paths {
-            let path = path.unwrap().path();
-            if path
-                .extension()
-                .and_then(|s| s.to_str())
-                .map(|s| s == "mp3" || s == "wav")
-                .unwrap_or(false)
-            {
-                files.push(path);
-            }
-        }
-
+impl AudioFolderModel {
+    pub fn new(files: Vec<PathBuf>) -> Self {
         Self {
             files,
             current_index: 0,

@@ -1,6 +1,6 @@
 extern crate cpal;
 
-use crate::modules::models::audio_model::AudioModel;
+use crate::modules::models::audio_folder_model::AudioFolderModel;
 use crate::modules::services::audio_loader::AudioLoader;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Stream, StreamConfig};
@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 pub struct PlayerController<L: AudioLoader> {
-    model: Arc<Mutex<AudioModel>>,
+    model: Arc<Mutex<AudioFolderModel>>,
     loader: L, // Use dependency injection for the loader
     stream: Option<Stream>,
     current_samples: Vec<f32>, // Buffer for the current audio samples
@@ -16,7 +16,7 @@ pub struct PlayerController<L: AudioLoader> {
 }
 
 impl<L: AudioLoader> PlayerController<L> {
-    pub fn new(model: Arc<Mutex<AudioModel>>, loader: L) -> Self {
+    pub fn new(model: Arc<Mutex<AudioFolderModel>>, loader: L) -> Self {
         PlayerController {
             model,
             loader,
@@ -96,19 +96,14 @@ impl<L: AudioLoader> PlayerController<L> {
         device: &cpal::Device,
         config: StreamConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let samples = Arc::new(Mutex::new(self.current_samples.clone())); // Use cloned samples
+        let samples = self.current_samples.clone(); // Clone the samples directly
         let mut sample_pos = 0;
 
+        // Create the stream within the same thread, avoiding any need to send it across threads
         self.stream = Some(device.build_output_stream(
             &config,
             move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                let samples = samples.lock().unwrap();
-
                 if sample_pos >= samples.len() {
-                    println!("[LOG] Playback finished.");
-                    for sample in data.iter_mut() {
-                        *sample = 0.0; // Fill with silence
-                    }
                     return;
                 }
 

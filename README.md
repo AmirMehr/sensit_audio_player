@@ -23,35 +23,43 @@ Build and Run
 -------------
 
 ### Step 1: Clone the Repository
+```
+git clone [<repository-url>](https://github.com/AmirMehr/sensit_audio_player.git)
+```
 
-bash
-
-Copy code
-
-`git clone <repository-url> cd <repository-directory>`
+```
+cd sensit_audio_player
+```
 
 ### Step 2: Build the Project
-
-bash
-
-Copy code
-
-`cargo build`
+```
+cargo build
+```
 
 ### Step 3: Run the Application
-
-bash
-
-Copy code
-
-`cargo run`
+```
+cargo run
+```
 
 Project Structure
 -----------------
 
-bash
-
-Copy code
-
-`src/ ├── main.rs              # Application entry point ├── cli_view.rs          # Handles CLI interactions ├── player_controller.rs # Controls audio playback └── audio_model.rs       # Manages audio file handling`
-
+```
+root/
+├── Cargo.toml
+└── src/
+    ├── main.rs              # Application entry point
+    ├── module.rs            # Module registry
+    └── modules/
+        ├── controllers/
+        │   └── player_controller.rs    # Controls audio playback
+        ├── models/
+        │   └── audio_folder_model.rs   # Manages audio data and tracks
+        ├── services/
+        │   ├── audio_folder_service.rs # Service to read audio folder content
+        │   ├── audio_loader.rs         # Service to load audio data
+        │   ├── wav_loader.rs           # WAV-specific loader
+        │   └── mp3_loader.rs           # MP3-specific loader
+        └── views/
+            └── cli_view.rs             # Handles command-line interface
+```
