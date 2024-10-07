@@ -18,12 +18,12 @@ impl AudioFolderModel {
         &self.files[self.current_index]
     }
 
-    // Move to the next track, wrapping around
+    // Move to the next track
     pub fn next_track(&mut self) {
         self.current_index = (self.current_index + 1) % self.files.len();
     }
 
-    // Move to the previous track, wrapping around
+    // Move to the previous track
     pub fn prev_track(&mut self) {
         if self.current_index == 0 {
             self.current_index = self.files.len() - 1;

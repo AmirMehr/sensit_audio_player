@@ -90,7 +90,7 @@ impl<L: AudioLoader> PlayerController<L> {
 
         Ok((device, config))
     }
-
+    
     fn create_audio_stream(
         &mut self,
         device: &cpal::Device,
@@ -99,11 +99,23 @@ impl<L: AudioLoader> PlayerController<L> {
         let samples = self.current_samples.clone(); // Clone the samples directly
         let mut sample_pos = 0;
 
-        // Create the stream within the same thread, avoiding any need to send it across threads
+        // Capture a mutable reference to the stream so we can pause it after playback
+        // let stream_ref = self.stream.as_ref().map(|s| s.clone());
+
+        // Create the stream within the same thread, avoiding sending across threads
         self.stream = Some(device.build_output_stream(
             &config,
             move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 if sample_pos >= samples.len() {
+                    // println!("[LOG] Playback finished.");
+
+                    // If the stream exists, pause it
+                    // I have to learn more about synch threads in Rust then handle it
+                    // In JAVA simply we use `runOnUIThread` function or `synchronized` keyword to do this
+                    // if let Some(stream) = &stream_ref {
+                    //     stream.pause().unwrap(); // Pauses the stream after completion
+                    // }
+
                     return;
                 }
 

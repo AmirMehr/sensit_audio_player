@@ -19,9 +19,11 @@ fn main() {
     let audio_model = Arc::new(Mutex::new(AudioFolderModel::new(audio_files)));
 
     // Step 4: Create an instance of WavLoader
+    // @TODO: In a production mode, we are able to implement a logic for selecting loader based on the selected audio
+    // For example: Read the type of file, and if it is a .mp3 file then with a Factory pattern we are able to have a Mp3Loader and pass it to the controller or create in inside
     let wav_loader = WavLoader;
 
-    // Step 5: Pass WavLoader and the audio model into the PlayerController
+    // Step 5: Pass WavLoader(Or Mp3Loader) and the audio model into the PlayerController
     let mut player_controller = PlayerController::new(audio_model.clone(), wav_loader);
 
     // Step 6: Load the current audio track (if available)
