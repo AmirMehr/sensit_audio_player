@@ -111,7 +111,8 @@ impl<L: AudioLoader> PlayerController<L> {
 
                     // If the stream exists, pause it
                     // I have to learn more about synch threads in Rust then handle it
-                    // In JAVA simply we use `runOnUIThread` function or `synchronized` keyword to do this
+                    // In JAVA simply we use:
+                    // `runOnUIThread` function or `synchronized` keyword to do this
                     // if let Some(stream) = &stream_ref {
                     //     stream.pause().unwrap(); // Pauses the stream after completion
                     // }
