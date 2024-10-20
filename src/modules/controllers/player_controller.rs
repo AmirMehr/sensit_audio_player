@@ -2,165 +2,94 @@ extern crate cpal;
 
 use crate::modules::models::audio_folder_model::AudioFolderModel;
 use crate::modules::services::audio_loader::AudioLoader;
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Stream, StreamConfig};
+use cpal::traits::StreamTrait;
+use cpal::Stream;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-pub struct PlayerController<L: AudioLoader> {
-    model: Arc<Mutex<AudioFolderModel>>,
-    loader: L, // Use dependency injection for the loader
+pub struct PlayerController {
+    audio_model: Arc<Mutex<AudioFolderModel>>,
+    audio_loader: Box<dyn AudioLoader>, // Boxed trait object for dynamic dispatch
     stream: Option<Stream>,
-    current_samples: Vec<f32>, // Buffer for the current audio samples
-    is_paused: bool,           // Track if the player is paused
+    is_playing: bool,
 }
 
-impl<L: AudioLoader> PlayerController<L> {
-    pub fn new(model: Arc<Mutex<AudioFolderModel>>, loader: L) -> Self {
+impl PlayerController {
+    pub fn new(
+        audio_model: Arc<Mutex<AudioFolderModel>>,
+        audio_loader: Box<dyn AudioLoader>,
+    ) -> Self {
         PlayerController {
-            model,
-            loader,
+            audio_model,
+            audio_loader,
             stream: None,
-            current_samples: Vec::new(),
-            is_paused: true,
+            is_playing: false,
         }
     }
 
     pub fn load_current(&mut self) {
-        // Step 1: Get the current file
         let current_file = self.get_current_file();
-
-        // Step 2: Log the file name and start time
         println!("[SENSIT_LOG] Loading file: {:?}", current_file.display());
-        let start_time = Instant::now(); // Start timing
 
-        // Step 3: Load WAV samples from the file using the injected loader
-        match self.loader.load_audio_samples(&current_file) {
-            Ok(samples) => {
-                self.current_samples = samples;
-                // Log the time taken to load the file
-                let duration = start_time.elapsed();
-                println!("[SENSIT_LOG] Finished loading file in {:?}", duration);
+        let start_time = Instant::now();
+
+        // Step 1: Use the audio loader to create a stream for the current file
+        match self.audio_loader.create_audio_stream(&current_file) {
+            Ok(stream) => {
+                self.stream = Some(stream);
+                println!(
+                    "[SENSIT_LOG] Stream created successfully for file {:?} in {:?}.",
+                    current_file.display(),
+                    start_time.elapsed()
+                );
+
+                self.play(); // Start playing the stream
             }
             Err(err) => {
-                eprintln!("[ERROR] Error loading samples: {:?}", err);
-                return;
+                eprintln!("[ERROR] Failed to create stream: {:?}", err);
             }
-        }
-
-        // Step 4: Initialize playback (CPAL)
-        let (device, config) = match self.initialize_playback() {
-            Ok((device, config)) => (device, config),
-            Err(err) => {
-                eprintln!("[ERROR] Failed to initialize playback: {:?}", err);
-                return;
-            }
-        };
-
-        // Step 5: Create audio stream
-        if let Err(err) = self.create_audio_stream(&device, config) {
-            eprintln!("[ERROR] Failed to create audio stream: {:?}", err);
-            return;
         }
     }
 
-    fn get_current_file(&self) -> std::path::PathBuf {
-        let model = self.model.lock().unwrap();
-        model.get_current_file().to_path_buf()
-    }
-
-    fn initialize_playback(
-        &self,
-    ) -> Result<(cpal::Device, StreamConfig), Box<dyn std::error::Error>> {
-        let host = cpal::default_host();
-        let device = host
-            .default_output_device()
-            .ok_or("[ERROR] Failed to find output device")?;
-        let config = device.default_output_config()?.config();
-
-        println!(
-            "[SENSIT_LOG] Selected output device: {:?}",
-            device.name().unwrap_or("Unknown device".to_string())
-        );
-
-        println!(
-            "[SENSIT_LOG] CPAL configuration - Channels: {}, Sample rate: {}",
-            config.channels, config.sample_rate.0
-        );
-
-        Ok((device, config))
-    }
-    
-    fn create_audio_stream(
-        &mut self,
-        device: &cpal::Device,
-        config: StreamConfig,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let samples = self.current_samples.clone(); // Clone the samples directly
-        let mut sample_pos = 0;
-
-        // Capture a mutable reference to the stream so we can pause it after playback
-        // let stream_ref = self.stream.as_ref().map(|s| s.clone());
-
-        // Create the stream within the same thread, avoiding sending across threads
-        self.stream = Some(device.build_output_stream(
-            &config,
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                if sample_pos >= samples.len() {
-                    // println!("[LOG] Playback finished.");
-
-                    // If the stream exists, pause it
-                    // I have to learn more about synch threads in Rust then handle it
-                    // In JAVA simply we use:
-                    // `runOnUIThread` function or `synchronized` keyword to do this
-                    // if let Some(stream) = &stream_ref {
-                    //     stream.pause().unwrap(); // Pauses the stream after completion
-                    // }
-
-                    return;
-                }
-
-                let len = data.len().min(samples.len() - sample_pos);
-                data[..len].copy_from_slice(&samples[sample_pos..sample_pos + len]);
-                sample_pos += len;
-
-                for sample in &mut data[len..] {
-                    *sample = 0.0;
-                }
-            },
-            move |err| {
-                eprintln!("[ERROR] Stream error: {:?}", err);
-            },
-            None,
-        )?);
-
-        Ok(())
+    fn get_current_file(&self) -> PathBuf {
+        let audio_model = self.audio_model.lock().unwrap();
+        audio_model.get_current_file().to_path_buf()
     }
 
     pub fn toggle_play(&mut self) {
-        if let Some(stream) = &self.stream {
-            if !self.is_paused {
-                stream.pause().unwrap();
-                self.is_paused = true;
-                println!("[SENSIT_LOG] Playback paused.");
-            } else {
-                stream.play().unwrap();
-                self.is_paused = false;
-                println!("[SENSIT_LOG] Playback resumed.");
-            }
+        if self.is_playing {
+            self.stop(); // Stop to simulate pause
         } else {
-            println!("[ERROR] No active stream to toggle play/pause.");
+            self.play(); // Play the stream
         }
     }
 
+    pub fn play(&mut self) {
+        if let Some(ref stream) = self.stream {
+            stream.play().expect("Failed to play the stream");
+            self.is_playing = true;
+            println!("[SENSIT_LOG] Playback started.");
+        } else {
+            println!("[ERROR] No stream available to play.");
+        }
+    }
+
+    pub fn stop(&mut self) {
+        // Simulate pausing by dropping the stream
+        self.stream = None;
+        self.is_playing = false;
+        println!("[SENSIT_LOG] Playback stopped.");
+    }
+
     pub fn next(&mut self) {
-        self.model.lock().unwrap().next_track();
+        self.audio_model.lock().unwrap().next_track();
         println!("[SENSIT_LOG] Playing next track...");
         self.load_current();
     }
 
     pub fn prev(&mut self) {
-        self.model.lock().unwrap().prev_track();
+        self.audio_model.lock().unwrap().prev_track();
         println!("[SENSIT_LOG] Playing previous track...");
         self.load_current();
     }

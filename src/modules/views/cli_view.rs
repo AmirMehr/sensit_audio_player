@@ -1,9 +1,8 @@
-use crate::modules::{
-    controllers::player_controller::PlayerController, services::wav_loader::WavLoader
-};
 use std::io::{self, Write};
 
-pub fn start_cli(player_controller: &mut PlayerController<WavLoader>) {
+use crate::modules::controllers::player_controller::PlayerController;
+
+pub fn start_cli(player_controller: &mut PlayerController) {
     loop {
         // Get user input
         print!("Enter command (▶️  p = play/pause, ⏮️  j = prev, ⏭️  k = next, 🛑 q = quit): ");
