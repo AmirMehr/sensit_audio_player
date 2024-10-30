@@ -5,92 +5,141 @@ use crate::modules::services::audio_loader::AudioLoader;
 use cpal::traits::StreamTrait;
 use cpal::Stream;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+/// **PlayerController Struct**
+///
+/// This struct manages the playback of audio files using the `AudioFolderModel`
+/// and `AudioLoader`. It holds the current stream state, manages play/pause operations,
+/// and allows navigation between tracks.
 pub struct PlayerController {
-    audio_model: Arc<Mutex<AudioFolderModel>>,
-    audio_loader: Box<dyn AudioLoader>, // Boxed trait object for dynamic dispatch
-    stream: Option<Stream>,
-    is_playing: bool,
+    audio_model: AudioFolderModel, // Manages the collection and current index of audio files.
+    audio_loader: Box<dyn AudioLoader>, // Uses dynamic dispatch to load audio streams based on the file format.
+    stream: Option<Stream>,             // Holds the currently playing audio stream, if any.
+    is_playing: bool,                   // Tracks whether audio playback is currently active.
 }
 
 impl PlayerController {
-    pub fn new(
-        audio_model: Arc<Mutex<AudioFolderModel>>,
-        audio_loader: Box<dyn AudioLoader>,
-    ) -> Self {
+    /// **Constructor for PlayerController**
+    ///
+    /// Creates a new instance of `PlayerController` by accepting an audio model
+    /// and an audio loader that implements the `AudioLoader` trait.
+    ///
+    /// # Parameters:
+    /// - `audio_model`: The model holding the list of audio files and the current track index.
+    /// - `audio_loader`: A boxed trait object that loads audio streams dynamically.
+    ///
+    /// # Returns:
+    /// - A new instance of `PlayerController`.
+    pub fn new(audio_model: AudioFolderModel, audio_loader: Box<dyn AudioLoader>) -> Self {
         PlayerController {
             audio_model,
             audio_loader,
-            stream: None,
-            is_playing: false,
+            stream: None,      // No stream loaded initially.
+            is_playing: false, // Playback starts in a paused state.
         }
     }
 
+    /// **Load the Current Audio Track**
+    ///
+    /// Loads the current audio file from the `AudioFolderModel` and creates an audio stream.
+    ///
+    /// # Returns:
+    /// - `Ok(())` if the stream is successfully loaded.
+    /// - `Err(Box<dyn Error>)` if loading fails.
     pub fn load_current(&mut self) {
-        let current_file = self.get_current_file();
+        let current_file = self.get_current_file(); // Get the current audio file path.
         println!("[SENSIT_LOG] Loading file: {:?}", current_file.display());
 
-        let start_time = Instant::now();
+        let start_time = Instant::now(); // Start measuring the time taken to load the stream.
 
-        // Step 1: Use the audio loader to create a stream for the current file
+        // Use the audio loader to create an audio stream for the current file.
         match self.audio_loader.create_audio_stream(&current_file) {
             Ok(stream) => {
-                self.stream = Some(stream);
+                self.stream = Some(stream); // Store the created stream.
                 println!(
                     "[SENSIT_LOG] Stream created successfully for file {:?} in {:?}.",
                     current_file.display(),
-                    start_time.elapsed()
+                    start_time.elapsed() // Log the time taken to create the stream.
                 );
-
-                self.play(); // Start playing the stream
             }
             Err(err) => {
-                eprintln!("[ERROR] Failed to create stream: {:?}", err);
+                eprintln!("[ERROR] Failed to create stream: {:?}", err); // Log the error.
+                self.stream = None; // Reset the stream if loading fails.
             }
         }
     }
 
+    /// **Get the Current Audio File**
+    ///
+    /// Returns the path of the current audio file from the `AudioFolderModel`.
+    ///
+    /// # Returns:
+    /// - `PathBuf`: The path to the current audio file.
     fn get_current_file(&self) -> PathBuf {
-        let audio_model = self.audio_model.lock().unwrap();
-        audio_model.get_current_file().to_path_buf()
+        self.audio_model.get_current_file().to_path_buf()
     }
 
+    /// **Toggle Playback State**
+    ///
+    /// Toggles between playing and pausing the audio stream.
     pub fn toggle_play(&mut self) {
         if self.is_playing {
-            self.stop(); // Stop to simulate pause
+            self.pause(); // If playing, pause the stream.
         } else {
-            self.play(); // Play the stream
+            self.play(); // If paused, start playback.
         }
     }
 
-    pub fn play(&mut self) {
+    /// **Play the Current Audio Stream**
+    ///
+    /// Starts playback of the current audio stream. If no stream is available,
+    /// it attempts to load the stream and plays it if loading is successful.
+    fn play(&mut self) {
         if let Some(ref stream) = self.stream {
+            // If a stream is already available, start playback.
             stream.play().expect("Failed to play the stream");
             self.is_playing = true;
             println!("[SENSIT_LOG] Playback started.");
         } else {
-            println!("[ERROR] No stream available to play.");
+            // No stream available, attempt to load the current track.
+            println!("[SENSIT_LOG] No stream available.");
         }
     }
 
-    pub fn stop(&mut self) {
-        // Simulate pausing by dropping the stream
-        self.stream = None;
-        self.is_playing = false;
-        println!("[SENSIT_LOG] Playback stopped.");
+    /// **Pause the Current Audio Stream**
+    ///
+    /// Pauses the playback of the current audio stream. If no stream is available,
+    /// it logs an error.
+    fn pause(&mut self) {
+        if let Some(ref stream) = self.stream {
+            // If a stream is available, pause it.
+            stream.pause().expect("Failed to pause the stream");
+            self.is_playing = false; // Update the playback state.
+            println!("[SENSIT_LOG] Playback paused.");
+        } else {
+            // Log an error if no stream is available.
+            println!("[ERROR] No stream available to pause.");
+        }
     }
 
+    /// **Play the Next Track**
+    ///
+    /// Advances to the next track in the `AudioFolderModel` and starts playback.
     pub fn next(&mut self) {
-        self.audio_model.lock().unwrap().next_track();
         println!("[SENSIT_LOG] Playing next track...");
-        self.load_current();
+        self.audio_model.next_track(); // Move to the next track.
+        self.load_current(); // Load and play the next track.
+        self.play();
     }
 
+    /// **Play the Previous Track**
+    ///
+    /// Moves to the previous track in the `AudioFolderModel` and starts playback.
     pub fn prev(&mut self) {
-        self.audio_model.lock().unwrap().prev_track();
         println!("[SENSIT_LOG] Playing previous track...");
-        self.load_current();
+        self.audio_model.prev_track(); // Move to the previous track.
+        self.load_current(); // Load and play the previous track.
+        self.play();
     }
 }
