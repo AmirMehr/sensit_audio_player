@@ -18,11 +18,10 @@ impl AudioFileLoader for WavLoader {
     /// # Returns:
     /// - `Ok((Vec<f32>, u32, u16))`: Samples, sample rate, and channels.
     /// - `Err(Box<dyn Error>)`: On failure, returns an error.
-    fn load_samples(&self, path: &Path) -> Result<(Vec<f32>, u32, u16), Box<dyn Error>> {
+    fn load_samples(&self, path: &Path) -> Result<(Vec<f32>, u16), Box<dyn Error>> {
         let reader = hound::WavReader::open(path)?;
         let spec = reader.spec();
 
-        let sample_rate = spec.sample_rate;
         let channels = spec.channels;
 
         let samples: Vec<f32> = reader
@@ -30,6 +29,6 @@ impl AudioFileLoader for WavLoader {
             .map(|s| s.unwrap() as f32 / i16::MAX as f32)
             .collect();
 
-        Ok((samples, sample_rate, channels))
+        Ok((samples, channels))
     }
 }

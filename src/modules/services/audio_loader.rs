@@ -34,7 +34,7 @@ pub trait AudioFileLoader {
     /// # Returns:
     /// - `Ok((Vec<f32>, u32, u16))`: On success, returns the decoded samples, sample rate, and channels.
     /// - `Err(Box<dyn Error>)`: On failure, returns an error.
-    fn load_samples(&self, path: &Path) -> Result<(Vec<f32>, u32, u16), Box<dyn Error>>;
+    fn load_samples(&self, path: &Path) -> Result<(Vec<f32>, u16), Box<dyn Error>>;
 }
 
 /// **DynamicAudioLoader Struct**
@@ -64,23 +64,26 @@ impl AudioLoader for DynamicAudioLoader {
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         // Load the samples, sample rate, and channel count using the appropriate loader.
-        let (samples, sample_rate, channels) = match extension {
+        let (samples, channels) = match extension {
             "wav" => WavLoader.load_samples(file_path)?,
             "mp3" => Mp3Loader.load_samples(file_path)?,
             _ => return Err("Unsupported audio format".into()),
         };
 
-        let mut prefered_channels = channels;
+        // Here we should add more logics for mp3 files with stereo or mono, or I don't know more
+        // But in some cases playback speed doesn't work well
+        // let mut prefered_channels = channels;
+        // let prefered_channels = config.channels();
         // Set prefered_channels to config.channels() if sample rates differ. Due to a few formats are not playing correctly in mp3 files.
-        if config.sample_rate().0 != sample_rate {
-            eprintln!(
-                "[WARNING] Sample rate mismatch: device {} Hz, file {} Hz. Using the device default output config.",
-                config.sample_rate().0,
-                sample_rate
-            );
-            // In a more advenced programm we should add some logic to convert the rate here
-            prefered_channels = config.channels();
-        }
+        // if config.sample_rate().0 != sample_rate {
+        //     eprintln!(
+        //         "[WARNING] Sample rate mismatch: device {} Hz, file {} Hz. Using the device default output config.",
+        //         config.sample_rate().0,
+        //         sample_rate
+        //     );
+        // In a more advenced programm we should add some logic to convert the rate here
+        // prefered_channels = config.channels();
+        // }
 
         // Error callback function for handling stream errors.
         let err_fn = |err| eprintln!("An error occurred on the output stream: {}", err);
@@ -93,7 +96,7 @@ impl AudioLoader for DynamicAudioLoader {
                 .build_output_stream(
                     &config.config(),
                     move |data: &mut [f32], _| {
-                        for frame in data.chunks_mut(prefered_channels as usize) {
+                        for frame in data.chunks_mut(config.channels() as usize) {
                             if sample_index + channels as usize <= samples.len() {
                                 for (i, sample) in frame.iter_mut().enumerate() {
                                     *sample = samples[sample_index + i % channels as usize];
