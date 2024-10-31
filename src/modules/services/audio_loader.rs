@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{Stream, StreamConfig};
+use cpal::Stream;
 use std::error::Error;
 use std::path::Path;
 
@@ -70,21 +70,17 @@ impl AudioLoader for DynamicAudioLoader {
             _ => return Err("Unsupported audio format".into()),
         };
 
-        // Set up a custom stream configuration if sample rates differ.
-        let preferred_config = if config.sample_rate().0 != sample_rate {
+        let mut prefered_channels = channels;
+        // Set prefered_channels to config.channels() if sample rates differ. Due to a few formats are not playing correctly in mp3 files.
+        if config.sample_rate().0 != sample_rate {
             eprintln!(
-                "[WARNING] Sample rate mismatch: device {} Hz, file {} Hz. Using file’s rate.",
+                "[WARNING] Sample rate mismatch: device {} Hz, file {} Hz. Using the device default output config.",
                 config.sample_rate().0,
                 sample_rate
             );
-            StreamConfig {
-                channels: config.channels(),
-                sample_rate: cpal::SampleRate(sample_rate),
-                buffer_size: cpal::BufferSize::Default,
-            }
-        } else {
-            config.config().clone()
-        };
+            // In a more advenced programm we should add some logic to convert the rate here
+            prefered_channels = config.channels();
+        }
 
         // Error callback function for handling stream errors.
         let err_fn = |err| eprintln!("An error occurred on the output stream: {}", err);
@@ -95,9 +91,9 @@ impl AudioLoader for DynamicAudioLoader {
         match config.sample_format() {
             cpal::SampleFormat::F32 => device
                 .build_output_stream(
-                    &preferred_config,
+                    &config.config(),
                     move |data: &mut [f32], _| {
-                        for frame in data.chunks_mut(preferred_config.channels as usize) {
+                        for frame in data.chunks_mut(prefered_channels as usize) {
                             if sample_index + channels as usize <= samples.len() {
                                 for (i, sample) in frame.iter_mut().enumerate() {
                                     *sample = samples[sample_index + i % channels as usize];

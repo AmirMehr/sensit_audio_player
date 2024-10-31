@@ -41,7 +41,7 @@ impl CliView {
                 "p" => player_controller.toggle_play(),
                 "j" => player_controller.prev(),
                 "k" => player_controller.next(),
-                "q" => break,
+                "q" => break, // break is enought nothing will happen after here in the programm
                 _ => println!("Invalid command"),
             }
         }
