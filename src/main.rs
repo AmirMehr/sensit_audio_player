@@ -27,9 +27,6 @@ fn main() {
     // Step 5: Pass the audio loader and the audio model into the PlayerController
     let mut player_controller = PlayerController::new(audio_model, audio_loader);
 
-    // Step 6: Load the current audio track (if available)
-    // player_controller.load_current();
-
-    // Step 7: Start the CLI interface
+    // Step 6: Start the CLI interface
     CliView::start_cli(&mut player_controller);
 }

@@ -32,12 +32,17 @@ impl PlayerController {
     /// # Returns:
     /// - A new instance of `PlayerController`.
     pub fn new(audio_model: AudioFolderModel, audio_loader: Box<dyn AudioLoader>) -> Self {
-        PlayerController {
+        let mut instance = PlayerController {
             audio_model,
             audio_loader,
-            stream: None,      // No stream loaded initially.
-            is_playing: false, // Playback starts in a paused state.
-        }
+            stream: None,
+            is_playing: false,
+        };
+
+        instance.load_current();
+        // Maybe call play here if we want to play immediately after first load
+        // instance.play() ;
+        instance
     }
 
     /// **Load the Current Audio Track**

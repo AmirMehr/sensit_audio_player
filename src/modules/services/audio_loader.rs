@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::Stream;
+use cpal::{Stream, StreamConfig};
 use std::error::Error;
 use std::path::Path;
 
@@ -25,17 +25,16 @@ pub trait AudioLoader {
 /// **AudioFileLoader Trait**
 ///
 /// Provides functionality to load audio samples from a file into a `Vec<f32>` along with the sample rate.
-/// This trait is useful for decoding audio files (like MP3 or WAV) into memory.
 pub trait AudioFileLoader {
-    /// Loads audio samples from the given file path.
+    /// Loads audio samples, sample rate, and channel count from a file.
     ///
     /// # Parameters:
     /// - `path`: The path to the audio file.
     ///
     /// # Returns:
-    /// - `Ok((Vec<f32>, u32))`: On success, returns the decoded samples and sample rate.
+    /// - `Ok((Vec<f32>, u32, u16))`: On success, returns the decoded samples, sample rate, and channels.
     /// - `Err(Box<dyn Error>)`: On failure, returns an error.
-    fn load_samples(&self, path: &Path) -> Result<(Vec<f32>, u32), Box<dyn Error>>;
+    fn load_samples(&self, path: &Path) -> Result<(Vec<f32>, u32, u16), Box<dyn Error>>;
 }
 
 /// **DynamicAudioLoader Struct**
@@ -55,75 +54,65 @@ impl AudioLoader for DynamicAudioLoader {
     /// # Returns:
     /// - `Ok(Stream)`: A ready-to-use stream for playback.
     /// - `Err(Box<dyn Error>)`: If the file loading or stream creation fails.
-    fn create_audio_stream(&self, file_path: &Path) -> Result<cpal::Stream, Box<dyn Error>> {
-        // Get the default audio host on the system.
+    fn create_audio_stream(&self, file_path: &Path) -> Result<Stream, Box<dyn Error>> {
         let host = cpal::default_host();
-
-        // Get the default output audio device.
         let device = host
             .default_output_device()
             .ok_or("No output device available")?;
 
-        // Get the default configuration for the output device.
         let config = device.default_output_config()?;
-
-        // Extract the file extension to select the appropriate loader.
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-        // Load the samples and sample rate using the appropriate loader.
-        let (samples, sample_rate) = match extension {
+        // Load the samples, sample rate, and channel count using the appropriate loader.
+        let (samples, sample_rate, channels) = match extension {
             "wav" => WavLoader.load_samples(file_path)?,
             "mp3" => Mp3Loader.load_samples(file_path)?,
             _ => return Err("Unsupported audio format".into()),
         };
 
-        // Ensure the device sample rate matches the audio sample rate.
-        if config.sample_rate().0 != sample_rate {
-            return Err(format!(
-                "Sample rate mismatch: device {} Hz, file {} Hz",
+        // Set up a custom stream configuration if sample rates differ.
+        let preferred_config = if config.sample_rate().0 != sample_rate {
+            eprintln!(
+                "[WARNING] Sample rate mismatch: device {} Hz, file {} Hz. Using file’s rate.",
                 config.sample_rate().0,
                 sample_rate
-            )
-            .into());
-        }
+            );
+            StreamConfig {
+                channels: config.channels(),
+                sample_rate: cpal::SampleRate(sample_rate),
+                buffer_size: cpal::BufferSize::Default,
+            }
+        } else {
+            config.config().clone()
+        };
 
-        // Get the sample format and channel count from the device configuration.
-        let sample_format = config.sample_format();
-        let channels = config.channels() as usize;
-
-        // Define the error callback for handling stream errors.
+        // Error callback function for handling stream errors.
         let err_fn = |err| eprintln!("An error occurred on the output stream: {}", err);
 
         // Track the current sample index during playback.
         let mut sample_index = 0;
 
-        // Match the sample format and build the appropriate output stream.
-        match sample_format {
+        match config.sample_format() {
             cpal::SampleFormat::F32 => device
                 .build_output_stream(
-                    &config.config(),
+                    &preferred_config,
                     move |data: &mut [f32], _| {
-                        // Process each frame of audio data.
-                        for frame in data.chunks_mut(channels) {
-                            if sample_index + channels <= samples.len() {
-                                // Copy samples into the frame.
+                        for frame in data.chunks_mut(preferred_config.channels as usize) {
+                            if sample_index + channels as usize <= samples.len() {
                                 for (i, sample) in frame.iter_mut().enumerate() {
-                                    *sample = samples[sample_index + i];
+                                    *sample = samples[sample_index + i % channels as usize];
                                 }
-                                sample_index += channels;
+                                sample_index += channels as usize;
                             } else {
-                                // If out of samples, fill with silence.
-                                for sample in frame.iter_mut() {
-                                    *sample = 0.0;
-                                }
+                                frame.fill(0.0);
                             }
                         }
                     },
-                    err_fn, // Error callback.
-                    None,   // No specific latency requested.
+                    err_fn,
+                    None,
                 )
                 .map_err(|e| Box::new(e) as Box<dyn Error>),
-            _ => Err("Unsupported sample format".into()), // Handle unsupported formats.
+            _ => Err("Unsupported sample format".into()),
         }
     }
 }

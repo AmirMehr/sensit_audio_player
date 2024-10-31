@@ -56,12 +56,18 @@ impl CliView {
     /// A `Vec<PathBuf>` containing the paths of valid audio files.
     pub fn read_folder_input(audio_folder_service: &AudioFolderService) -> Vec<std::path::PathBuf> {
         loop {
-            print!("📁 Enter the folder path containing audio files: ");
+            print!("📁 Enter the folder path containing audio files(q to quit): ");
             io::stdout().flush().unwrap(); // Ensure prompt is displayed immediately.
 
             let mut folder = String::new();
             io::stdin().read_line(&mut folder).unwrap();
             let folder = folder.trim().to_string();
+
+            // Exit if the user enters "q"
+            if folder == "q" {
+                println!("Exiting CLI.");
+                std::process::exit(0); // Exits the program
+            }
 
             // Use the service to load audio files from the provided path.
             let audio_files = audio_folder_service.load_audio_files(&folder);
